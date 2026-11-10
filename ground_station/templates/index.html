@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>TUSI 지상국</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+    <header class="topbar">
+        <div>
+            <h1>TUSI Ground Station</h1>
+            <p>유도 낙하산 회수 미션</p>
+        </div>
+
+        <span class="mode-badge" id = "source-mode">
+            {{ snapshot.source_mode }}
+        </span>
+    </header>
+
+    <main>
+        <p class="notice">
+    모의 개발 화면 · 아직 모의 장치 데이터가 연결되지 않았습니다.
+</p>
+
+<p id="server-status" class="connection-status" role="status">
+    PC 서버 연결 확인 중…
+</p>
+
+        <section class="summary-grid" aria-label="미션 요약">
+            <article class="card">
+                <h2>비행 상태</h2>
+                <p class="value" id = "flight-state">
+                    {{ snapshot.flight.state_name }}
+                </p>
+                <p class="description">탑재 상태 보고 대기</p>
+            </article>
+
+            <article class="card">
+                <h2>제어 모드</h2>
+                <p class="value" id = "control-mode">
+                    {{ snapshot.flight.control_mode
+                       if snapshot.flight.control_mode is not none
+                       else "미확인" }}
+                </p>
+                <p class="description">AUTO / MANUAL 적용 상태</p>
+            </article>
+
+            <article class="card">
+                <h2>E22 통신</h2>
+                <p class="value">미연동</p>
+                <p class="description">통신 서비스 연결 전</p>
+            </article>
+
+            <article class="card">
+                <h2>ELRS 조종 입력</h2>
+                <p class="value">미확인</p>
+                <p class="description">탑재 수신 상태 보고 대기</p>
+            </article>
+        </section>
+
+        <section class="panel">
+            <h2>비행 데이터</h2>
+
+            <dl class="measurements">
+                <div>
+                    <dt>발사 지면 상대고도</dt>
+                    <dd>— <span>m</span></dd>
+                </div>
+
+                <div>
+                    <dt>수직속도</dt>
+                    <dd>— <span>m/s</span></dd>
+                </div>
+
+                <div>
+                    <dt>목표 거리</dt>
+                    <dd>— <span>m</span></dd>
+                </div>
+            </dl>
+
+            <p class="description">
+                미수신 값은 0으로 표시하지 않습니다.
+            </p>
+        </section>
+
+        <section class="panel">
+            <h2>상태 전이 이력</h2>
+            <p class="description">아직 수신한 전이 이벤트가 없습니다.</p>
+        </section>
+
+        <section class="panel">
+            <h2>운용 명령</h2>
+            <p class="description">
+                명령 서비스 연결 전입니다.
+            </p>
+
+            <div class="actions">
+                <button type="button" disabled>ARM 요청</button>
+                <button type="button" disabled>DISARM 요청</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <span>
+            PC 세션:
+            <span id="session-id">{{ snapshot.session_id }}</span>
+        </span>
+        <a href="/api/v1/snapshot">상태 JSON 확인</a>
+    </footer>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
