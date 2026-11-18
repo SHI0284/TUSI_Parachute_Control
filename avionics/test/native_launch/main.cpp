@@ -1,5 +1,7 @@
 #include <iostream>
+#include <limits>
 
+#include "flight_config.h"
 #include "launch_detector.h"
 
 int failures = 0;
@@ -81,6 +83,61 @@ int main() {
     check(
         "Duplicate timestamp rejected",
         !detector.update(25.0f, 100, true)
+    );
+
+    // 6. 설정 검증: 잘못된 설정은 configValid()가 거절해야 한다.
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float inf = std::numeric_limits<float>::infinity();
+    const float g = avionics::kStandardGravityMps2;
+
+    // 임계값, 유지 시간, 최대 간격으로 감지기를 만들고 설정 유효 여부를 돌려준다.
+    auto configIsValid = [](float thresholdMps2,
+                            std::uint64_t holdTimeMs,
+                            std::uint64_t maxSampleGapMs) {
+        avionics::LaunchDetectorConfig c{thresholdMps2, holdTimeMs, maxSampleGapMs};
+        return avionics::LaunchDetector(c).configValid();
+    };
+
+    check(
+        "Test config is valid",
+        avionics::LaunchDetector(avionics::kTestLaunchConfig).configValid()
+    );
+
+    check("Config used above is valid", detector.configValid());
+
+    check("NaN threshold rejected", !configIsValid(nan, 60, 30));
+
+    check("Infinite threshold rejected", !configIsValid(inf, 60, 30));
+
+    check("Zero threshold rejected", !configIsValid(0.0f, 60, 30));
+
+    check("Negative threshold rejected", !configIsValid(-20.0f, 60, 30));
+
+    // 경계값: 정확히 1 g는 정지 상태에서도 충족되므로 거절한다.
+    check("Threshold equal to 1 g rejected", !configIsValid(g, 60, 30));
+
+    check("Threshold below 1 g rejected", !configIsValid(5.0f, 60, 30));
+
+    check("Zero hold time rejected", !configIsValid(20.0f, 0, 30));
+
+    check("Zero max sample gap rejected", !configIsValid(20.0f, 60, 0));
+
+    check("All-zero config rejected", !configIsValid(0.0f, 0, 0));
+
+    // 7. 설정이 잘못되면 높은 가속도가 계속 들어와도 감지하지 않는다.
+    avionics::LaunchDetectorConfig belowGravity{5.0f, 60, 30};
+    avionics::LaunchDetector invalidDetector(belowGravity);
+
+    bool detectedWithInvalidConfig = false;
+    for (std::uint64_t t = 0; t <= 200; t += 20) {
+        if (invalidDetector.update(25.0f, t, true)) {
+            detectedWithInvalidConfig = true;
+        }
+    }
+
+    check(
+        "Invalid config never detects launch",
+        !detectedWithInvalidConfig
     );
 
     std::cout << "Failures: " << failures << '\n';

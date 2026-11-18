@@ -14,8 +14,10 @@ class LaunchDetector {
 public:
     explicit LaunchDetector(LaunchDetectorConfig config);   // 생성자: 구성 설정을 받아서 초기화
 
+    bool configValid() const;          // 구성 설정이 유효한지 확인
+
     bool update(
-        float acceleration,      // 현재 가속도 값 (m/s^2)
+        float acceleration,      // 가속도계 3축 노름, 중력 포함 (m/s^2)
         std::uint64_t timeMs,    // 현재 샘플의 시간 (ms)
         bool valid               // 현재 샘플이 유효한지 여부
     );

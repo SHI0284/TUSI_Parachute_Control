@@ -1,4 +1,5 @@
 #include "launch_detector.h"
+#include "flight_config.h"
 
 #include <cmath>
 
@@ -16,16 +17,24 @@ void LaunchDetector::reset() {
     startTimeMs_ = 0;
 }
 
+bool LaunchDetector::configValid() const {
+    // 설정이 잘못됐으면 감지하지 않는다.
+    if (!std::isfinite(config_.thresholdMps2) ||
+        config_.thresholdMps2 <= kStandardGravityMps2 ||
+        config_.holdTimeMs == 0 ||
+        config_.maxSampleGapMs == 0) {
+        return false;
+    }
+    return true;
+}
+
 bool LaunchDetector::update(
     float acceleration,
     std::uint64_t timeMs,
     bool valid
 ) {
-    // 설정이 잘못됐으면 감지하지 않는다.
-    if (!std::isfinite(config_.thresholdMps2) ||
-        config_.thresholdMps2 <= 0.0f ||
-        config_.holdTimeMs == 0 ||
-        config_.maxSampleGapMs == 0) {
+    // 설정이 잘못됐으면 추적을 초기화하고 감지하지 않는다.
+    if (!configValid()) {
         reset();
         return false;
     }
