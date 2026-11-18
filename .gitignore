@@ -5,3 +5,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Flight recordings (SIM / REAL), never source files
+ground_station/data/

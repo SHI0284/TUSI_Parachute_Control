@@ -1,44 +1,55 @@
-from uuid import uuid4
-
+import argparse
+from pathlib import Path
+from recorder import FlightRecorder
 from flask import Flask, jsonify, render_template
+from state_store import StateStore
+from simulator import Simulator
 
 
-app = Flask(__name__)
+def create_app(store=None):
+    app = Flask(__name__)
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    store = store if store is not None else StateStore()
 
-# 서버를 실행할 때 한 번 생성한다.
-# 브라우저를 새로고침해도 같은 세션을 유지한다.
-snapshot = {
-    "api_version": 1,
-    "source_mode": "SIM",
-    "session_id": str(uuid4()),
-    "vehicle_id": None,
-    "boot_id": None,
-    "snapshot_revision": "0",
-    "flight": {
-        "state_code": None,
-        "state_name": "UNKNOWN",
-        "control_mode": None,
-    },
-}
+    @app.get("/")
+    def index():
+        return render_template("index.html")
 
+    @app.get("/api/v1/snapshot")
+    def get_snapshot():
+        response = jsonify(store.get_snapshot())
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
-@app.get("/")
-def index():
-    return render_template("index.html", snapshot=snapshot)
-
-
-@app.get("/api/v1/snapshot")
-def get_snapshot():
-    # 조회만 수행한다. 상태나 모의 시간을 변경하지 않는다.
-    response = jsonify(snapshot)
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    return app
 
 
 if __name__ == "__main__":
-    app.run(
-        host="127.0.0.1",
-        port=8080,
-        debug=False,
-        use_reloader=False,
-    )
+    parser = argparse.ArgumentParser(description="TUSI Ground Station")
+    parser.add_argument("--mode", choices=["sim", "serial"], default="sim")
+    parser.add_argument("--port", help="예: /dev/ttyUSB0")
+    parser.add_argument("--baud", type=int, default=115200)
+    parser.add_argument("--http-port", type=int, default=8080)
+    parser.add_argument("--data-dir", default=str(Path(__file__).parent / "data"))
+    args = parser.parse_args()
+    if args.mode == "serial" and not args.port:
+        parser.error("serial 모드에는 --port가 필요합니다.")
+    store = StateStore("SIM" if args.mode == "sim" else "REAL")
+    if args.mode == "sim":
+        source = Simulator(store)
+    else:
+        from transport import SerialReceiver
+        source = SerialReceiver(store, args.port, args.baud)
+    recorder = FlightRecorder(args.data_dir, store.get_snapshot()["source_mode"], store.get_snapshot()["session_id"])
+    store.recorder = recorder
+    recorder.start()
+    recorder.ready.wait(5)
+    app = create_app(store)
+    source.start()
+    try:
+        app.run(host="127.0.0.1", port=args.http_port, debug=False, use_reloader=False)
+    finally:
+        source.stop()
+        source.join()
+        recorder.stop()
+        recorder.join()

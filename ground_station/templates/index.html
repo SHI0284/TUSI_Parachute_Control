@@ -1,120 +1,35 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TUSI · Flight Deck</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script type="importmap">{"imports":{"three":"/static/vendor/three/three.module.js"}}</script>
+</head><body>
+<header class="topbar"><a class="brand" href="/"><span class="brand-icon">✳</span><div>TUSI<small>FLIGHT SYSTEMS</small></div></a>
+<nav aria-label="대시보드 섹션"><a href="#mission">Mission</a><a href="#telemetry">Telemetry</a><a href="#recording">Record</a></nav>
+<div class="header-status"><span id="source-mode" class="badge">WAIT</span><span id="server-status">PC 대기</span><time id="clock">—</time></div></header>
+<main id="mission"><section class="mission-heading"><div><p class="eyebrow">MISSION / GUIDED RECOVERY</p><h1>Mission overview<span class="live-dot"></span></h1><p id="source-note">입력 대기</p></div><div class="mission-time"><span>DEVICE UPTIME</span><strong id="mission-time">T+ —</strong><small id="vehicle-id">기체 보고 대기</small></div></section>
+<div id="data-warning" class="warning" role="status">텔레메트리 대기</div>
+<section class="flight-deck">
+<aside class="deck-left"><section class="metrics"><div class="panel-heading"><h2>LIVE TELEMETRY</h2><span class="live-indicator">● LIVE</span></div><article><span>RELATIVE ALTITUDE</span><div><strong id="relative-altitude">—</strong><em>m</em></div><small>발사 지면 기준 · AGL 아님</small></article><article><span>VERTICAL SPEED</span><div><strong id="vertical-speed">—</strong><em>m/s</em></div><small>상승 + / 하강 −</small></article><article><span>TARGET DISTANCE</span><div><strong id="target-distance">—</strong><em>m</em></div><small>GCS 계산 · 수평 거리</small></article><article><span>CONTROL MODE</span><div><strong id="control-mode">—</strong></div><small>탑재 보고 모드</small></article><article><span>TELEMETRY AGE</span><div><strong id="data-age">—</strong><em>ms</em></div><small>PC 수신 후 경과시간</small></article></section>
+<article class="panel arming-panel"><div class="panel-heading"><h2>AIRFRAME ARMING</h2><span>READ ONLY</span></div><strong id="arming-state" class="arm-value">미확인</strong><p id="arming-detail" class="footnote">동체 물리 버튼 readback 대기</p><p class="footnote">ARM 권한은 동체에 있습니다.<br>지상국은 보고된 상태를 표시합니다.</p></article></aside>
+<article class="panel hero"><div class="panel-heading"><h2>RECOVERY VEHICLE</h2><button id="model-reset" type="button">시점 초기화</button></div><div class="hero-scene"><div id="rocket-scene" aria-label="OpenRocket 기반 기체 및 낙하산 3D 모델"></div><div class="hero-label"><span id="model-dimensions">모델 로딩 중</span><strong>TUSI / RECOVERY</strong><small id="model-status">3D 준비 중</small></div><div class="recovery-label"><span>DROGUE / 0.6 m</span><strong id="drogue-state">미확인</strong><span>MAIN / PARAFOIL</span><strong id="main-state">미확인</strong></div></div><p id="recovery-note" class="footnote">전개 보고 대기 · 물리적 전개 확인과 시각화는 구분합니다.</p><p class="footnote">기체: ORK 치수 · 메인: 사진 기반 날개형 / 실측 치수 미확정 · 줄 배치는 개념 표현</p><article class="panel attitude-panel"><div class="panel-heading"><h2><span>04</span> ATTITUDE / IMU</h2><span id="imu-status">미수신</span></div><div class="angles"><div>ROLL<strong id="roll">—</strong></div><div>PITCH<strong id="pitch">—</strong></div><div>YAW<strong id="yaw">—</strong></div></div><div class="imu-row"><span>ACCEL <small>m/s²</small></span><code id="accel">— / — / —</code></div><div class="imu-row"><span>GYRO <small>°/s</small></span><code id="gyro">— / — / —</code></div></article></article>
+<aside class="deck-right"><article class="panel"><div class="panel-heading"><h2><span>05</span> FLIGHT PROFILE</h2><span class="legend">고도 m <i class="dot cyan"></i> / 속도 m/s <i class="dot amber"></i></span></div><canvas id="altitude-chart" class="chart" aria-label="상대고도 시계열"></canvas><canvas id="speed-chart" class="chart" aria-label="수직속도 시계열"></canvas></article><article class="panel map-panel"><div class="panel-heading"><h2><span>02</span> GPS TRACK</h2><div class="tools"><label><input type="checkbox" id="map-online"> 온라인 배경</label><button id="map-fit" type="button">전체 궤적</button></div></div><div id="gps-map" aria-label="GPS 지도"></div><div class="map-footer"><span><i class="dot cyan"></i>현재 위치 <i class="dot amber"></i>보고 목표</span><span id="gps-coords">GNSS 대기</span></div><p id="map-status" class="footnote">오프라인 좌표 지도 · 배경 타일 없음</p></article></aside></section>
+<section class="flight-strip panel"><div class="panel-heading"><h2><span>01</span> FLIGHT SEQUENCE</h2><span id="flight-label">UNKNOWN</span></div><div id="state-bar" class="state-bar" aria-label="보고된 비행 상태"></div><p class="footnote">막대는 수신된 상태만 표시합니다. 방문 이력은 완료율이 아니며, 전개 상태가 물리적 전개 성공을 뜻하지 않습니다.</p></section>
 
-    <title>TUSI 지상국</title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-</head>
-
-<body>
-    <header class="topbar">
-        <div>
-            <h1>TUSI Ground Station</h1>
-            <p>유도 낙하산 회수 미션</p>
-        </div>
-
-        <span class="mode-badge" id = "source-mode">
-            {{ snapshot.source_mode }}
-        </span>
-    </header>
-
-    <main>
-        <p class="notice">
-    모의 개발 화면 · 아직 모의 장치 데이터가 연결되지 않았습니다.
-</p>
-
-<p id="server-status" class="connection-status" role="status">
-    PC 서버 연결 확인 중…
-</p>
-
-        <section class="summary-grid" aria-label="미션 요약">
-            <article class="card">
-                <h2>비행 상태</h2>
-                <p class="value" id = "flight-state">
-                    {{ snapshot.flight.state_name }}
-                </p>
-                <p class="description">탑재 상태 보고 대기</p>
-            </article>
-
-            <article class="card">
-                <h2>제어 모드</h2>
-                <p class="value" id = "control-mode">
-                    {{ snapshot.flight.control_mode
-                       if snapshot.flight.control_mode is not none
-                       else "미확인" }}
-                </p>
-                <p class="description">AUTO / MANUAL 적용 상태</p>
-            </article>
-
-            <article class="card">
-                <h2>E22 통신</h2>
-                <p class="value">미연동</p>
-                <p class="description">통신 서비스 연결 전</p>
-            </article>
-
-            <article class="card">
-                <h2>ELRS 조종 입력</h2>
-                <p class="value">미확인</p>
-                <p class="description">탑재 수신 상태 보고 대기</p>
-            </article>
-        </section>
-
-        <section class="panel">
-            <h2>비행 데이터</h2>
-
-            <dl class="measurements">
-                <div>
-                    <dt>발사 지면 상대고도</dt>
-                    <dd>— <span>m</span></dd>
-                </div>
-
-                <div>
-                    <dt>수직속도</dt>
-                    <dd>— <span>m/s</span></dd>
-                </div>
-
-                <div>
-                    <dt>목표 거리</dt>
-                    <dd>— <span>m</span></dd>
-                </div>
-            </dl>
-
-            <p class="description">
-                미수신 값은 0으로 표시하지 않습니다.
-            </p>
-        </section>
-
-        <section class="panel">
-            <h2>상태 전이 이력</h2>
-            <p class="description">아직 수신한 전이 이벤트가 없습니다.</p>
-        </section>
-
-        <section class="panel">
-            <h2>운용 명령</h2>
-            <p class="description">
-                명령 서비스 연결 전입니다.
-            </p>
-
-            <div class="actions">
-                <button type="button" disabled>ARM 요청</button>
-                <button type="button" disabled>DISARM 요청</button>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <span>
-            PC 세션:
-            <span id="session-id">{{ snapshot.session_id }}</span>
-        </span>
-        <a href="/api/v1/snapshot">상태 JSON 확인</a>
-    </footer>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-</body>
-</html>
+<section class="panel controller-panel" aria-label="탑재 제어기 상태">
+<div class="panel-heading"><h2>FLIGHT CONTROL <small>탑재 제어 보고</small></h2><span id="controller-status">미수신</span></div>
+<div class="controller-grid">
+<div class="control-overview"><span class="eyebrow">INPUT AUTHORITY</span><strong id="controller-source">—</strong><p id="controller-freshness">제어 샘플 대기</p><div class="steering-track"><span>L</span><div><i id="steering-cursor"></i></div><span>R</span></div><small>정규화 선회 명령 <b id="turn-command">—</b></small></div>
+<div class="heading-readback"><div><span>목표 기수방위</span><strong id="target-heading">—</strong></div><div><span>보고 기수방위</span><strong id="control-heading">—</strong></div><div><span>탑재 계산 오차</span><strong id="heading-error">—</strong></div></div>
+<div class="servo-readback"><div class="servo-title"><span>LEFT SERVO</span><strong id="left-command">—</strong></div><div class="servo-track"><i id="left-command-bar"></i><b id="left-feedback-marker"></b></div><p>명령 <span id="left-pwm">—</span><span>실측 <b id="left-feedback">미제공</b></span></p><div class="servo-title"><span>RIGHT SERVO</span><strong id="right-command">—</strong></div><div class="servo-track"><i id="right-command-bar"></i><b id="right-feedback-marker"></b></div><p>명령 <span id="right-pwm">—</span><span>실측 <b id="right-feedback">미제공</b></span></p></div>
+</div><p class="footnote">수신 전용 · 채운 막대 = 명령각 / 세로선 = 실측각 · 실제 피드백이 없으면 명령을 실측으로 대체하지 않습니다.</p>
+</section>
+<section id="telemetry" class="lower-grid"><article class="panel"><div class="panel-heading"><h2><span>03</span> 3D TRAJECTORY</h2><button id="orbit-reset" type="button">시점 초기화</button></div><div class="canvas-wrap"><canvas id="trajectory" aria-label="3차원 비행 궤적"></canvas><span class="canvas-caption">E / N / UP · m<br>드래그 회전 · 휠 확대</span></div><p class="footnote">첫 유효 GPS = 화면 원점 · 높이 = 발사 지면 상대고도. 지형/AGL 모델 아님.</p></article><article class="panel imu-plots"><div class="panel-heading"><h2>IMU / XYZ STREAM</h2><span>RAW SENSOR</span></div><canvas id="accel-chart" class="chart" aria-label="가속도 XYZ 시계열"></canvas><canvas id="gyro-chart" class="chart" aria-label="각속도 XYZ 시계열"></canvas><p class="footnote">최대 최근 1,200개 샘플 · 기기 시각(초) · 점선 = 상태 변경 관측 · XYZ: 청록/황색/보라 · 누락 구간은 연결하지 않음</p></article><article class="panel"><div class="panel-heading"><h2><span>06</span> STATE OBSERVATIONS</h2><span id="event-count">0 EVENTS</span></div><div id="events" class="event-list"><p class="empty">상태 보고 대기</p></div><p class="footnote">스냅샷에서 관측한 변경 · 실제 전이 시각은 미확정 · 최근 200개 / 현재 부팅</p></article></section>
+<section id="recording" class="record-grid"><article class="panel"><div class="panel-heading"><h2><span>07</span> RECEIVER</h2><span class="badge muted">RX ONLY</span></div><div class="link-detail"><span>입력 전송</span><strong id="transport-status">—</strong></div><p id="transport-detail" class="footnote">—</p><div class="link-detail"><span>E22 / ELRS</span><strong>실물 상태 미확인</strong></div><div class="counters"><div>수신<strong id="rx-count">0</strong></div><div>거부<strong id="reject-count">0</strong></div><div>누락 추정<strong id="gap-count">0</strong></div></div><p id="transport-error" class="footnote"></p><p class="footnote">BOOT <code id="boot-id">—</code><br>PROTOCOL: DEV_JSONL_1 · 펌웨어 버전 미제공<br>중복 <span id="duplicate-count">0</span> / 역순 <span id="order-count">0</span><br>파일 기록: 아래 FLIGHT RECORDER 상태 참조</p><p class="footnote">USB 수신은 DEV_JSONL_1 시험 형식. 최종 무선 패킷·인증·명령 송신은 별도 설계.</p></article>
+<article class="panel"><div class="panel-heading"><h2>FLIGHT RECORDER</h2><span id="recording-state">대기</span></div><div class="counters"><div>DB 기록<strong id="record-count">0</strong></div><div>쓰기 대기<strong id="record-queue">0</strong></div><div>기록 누락<strong id="record-dropped">0</strong></div></div><p id="record-health" class="footnote">저장 상태 확인 중</p><p class="footnote">SESSION DATABASE<br><code id="record-path">—</code></p><p class="footnote">LATEST BACKUP<br><code id="backup-path">—</code><br><span id="backup-time">—</span></p><p class="footnote">SIM / REAL 분리 · 60초마다 일관된 DB 사본 생성 · 정상 종료 시 최종 백업<br>같은 디스크의 사본입니다. 비행 종료 후 외부 저장장치에도 복사하세요.</p></article></section>
+</main><footer><span>TUSI / GROUND SYSTEMS · SESSION <code id="session-id">—</code></span><a href="/api/v1/snapshot" target="_blank" rel="noopener">RAW SNAPSHOT ↗</a></footer>
+<script src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body></html>

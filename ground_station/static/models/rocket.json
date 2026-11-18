@@ -1,0 +1,57 @@
+{
+  "source": "simulation/data/rocket.ork",
+  "sha256": "09fc926c1509914fd830216538d0ff4eb5532b924ba192f8e28166c0763d23f5",
+  "name": "낙하산",
+  "units": "m",
+  "nose": {
+    "length": 0.27999999999999997,
+    "radius": 0.052000000000000005,
+    "shape": "ellipsoid"
+  },
+  "body": {
+    "length": 1.3,
+    "radius": 0.052000000000000005
+  },
+  "tail": {
+    "length": 0.024375,
+    "foreradius": 0.052000000000000005,
+    "aftradius": 0.04375000000000001
+  },
+  "fins": {
+    "fincount": 4.0,
+    "rootchord": 0.39993597120046603,
+    "tipchord": 0.10520568847656234,
+    "sweeplength": 0.20426995533654246,
+    "height": 0.08972466421127322,
+    "thickness": 0.0030000000000000005,
+    "rotation": 0.0
+  },
+  "parachutes": [
+    {
+      "name": "드로그_낙하산",
+      "diameter": 0.6,
+      "linecount": 8.0,
+      "linelength": 0.6
+    },
+    {
+      "name": "Parachute",
+      "diameter": 1.3,
+      "linecount": 6.0,
+      "linelength": 1.1
+    }
+  ],
+  "main_visualization": {
+    "type": "PHOTO_REFERENCE_PARAFOIL",
+    "span_m": null,
+    "chord_m": null,
+    "dimensions_verified": false,
+    "reference": "https://images-na.ssl-images-amazon.com/images/I/61uHHe8CnZL.jpg"
+  },
+  "notes": [
+    "ORK의 메인 parachute diameter는 날개형 캐노피의 실측 폭이 아님",
+    "외부 표면만 재구성",
+    "도색은 시각화용",
+    "캐노피 곡면과 전개 애니메이션은 개념 표현; 공력/전개 시뮬레이션 아님"
+  ],
+  "length": 1.604375
+}
